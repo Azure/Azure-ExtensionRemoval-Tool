@@ -8,6 +8,8 @@ The PowerShell script is totally written by Steven Li(v-xiaolongli@microsoft.com
 
 
 
+------
+
 ### Introduction
 
 These days, I have written a PowerShell script to uninstall MMA or related extensions from Azure VMs of Windows and Linux. After I got adequate testing on my subscription, now it could be introduced to users.
@@ -21,6 +23,8 @@ So please do enough testing in your subscription/resource group before using it 
 > New Features: **Extensions will not limited to MMA/OMS**. All items listed on the extension page can be correctly triggered of uninstallation.
 
 
+
+------
 
 ### Preparation
 
@@ -37,11 +41,15 @@ Before running it from Cloud Shell, or PowerShell with Azure Powershell, you may
 
 
 
+------
+
 ### Execution
 
 If you're running it in PowerShell 5, the color setting on output may result in error decoding. *Please remember that this script is recommended executing in CloudShell and PowerShell 7 with Azure PowerShell integrated.*
 
 
+
+------
 
 #### Screenshots
 
@@ -49,9 +57,11 @@ If you're running it in PowerShell 5, the color setting on output may result in 
 
 
 
-
+------
 
 ### Change logs
+
+7.16 Public Release on Github
 
 4.5 Protect execution when variables haven't been set correctly.
 
