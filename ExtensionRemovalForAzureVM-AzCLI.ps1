@@ -1,10 +1,10 @@
-# Arthor: Steven from Microsoft Support
-# Timeline: 4.5.2024 16:43
+# Arthor: Steven Li from Microsoft Azure Monitor team
+# Timeline: 7.17.2024 12:04 PM
 # Login into your account
-Connect-AzAccount
+az login
  
 # Subscription Id. The script run by each subscription
-$subscriptionId = "Replace your subscription at line 7" # Only 1 subscription is accepted
+$subscriptionId = "" # Only 1 subscription is accepted
  
 # The VM Name which you may not want to uninstall extension. Keep the first comma.
 $excludeVMNameList = @("", "", "") # Add more excluded VMs as needed
@@ -17,7 +17,7 @@ $resourceGroupNames = @("", "") # Add more resource group names as needed, leave
 # Example: $resourceGroupNames = @("zSteven", "che-rg-only-VM")
  
 try {
-    Select-AzSubscription -SubscriptionId $subscriptionId -ErrorAction Stop | Out-Null
+    az account set --subscription $subscriptionId | Out-Null
     Write-Host "Select Subscription: $subscriptionId" -ForegroundColor DarkGray
 } catch {
     Write-Host "Failed to reach target Subscription: $subscriptionId" -ForegroundColor Red
@@ -32,20 +32,19 @@ if ($resourceGroupNames.Count -eq 0) {
         Write-Host "Operation cancelled by user." -ForegroundColor Yellow
         exit 0
     }
-    $resourceGroupNames = (Get-AzResourceGroup).ResourceGroupName
+    $resourceGroupNames = az group list --query "[].name" -o tsv
     Write-Host "Selected All ResourceGroups in subscription: $subscriptionId. " -ForegroundColor DarkGray
 }
  
 $jobs = @()
  
 foreach ($resourceGroupName in $resourceGroupNames) {
-    $resourceGroup = Get-AzResourceGroup -Name $resourceGroupName
- 
+    $resourceGroup = az group show --name $resourceGroupName
+
     if ($resourceGroup -ne $null) {
-        $vmList = Get-AzVM -ResourceGroupName $resourceGroupName
+        $vmList = az vm list --resource-group $resourceGroupName --query "[].name" -o tsv
  
-        foreach ($vm in $vmList) {
-            $vmName = $vm.Name
+        foreach ($vmName in $vmList) {
             if ($excludeVMNameList -icontains $vmName) {
                 Write-Host "VM: $vmName is in the excludeVMNameList, skip" -ForegroundColor DarkYellow
                 Continue
@@ -53,19 +52,21 @@ foreach ($resourceGroupName in $resourceGroupNames) {
  
             $jobScriptBlock = {
                 param($resourceGroupName, $vmName, $uninstallExtensionNameList, $excludeVMNameList)
-                $vmExtensions = (Get-AzVM -ResourceGroupName $resourceGroupName -Name $vmName -Status).Extensions
+                $vmExtensions = az vm extension list --resource-group $resourceGroupName --vm-name $vmName --query "[].name" -o tsv
                 $isAnyExtensionProcessed = $false
  
                 if (($null -ne $vmExtensions) -and ($vmExtensions.Count -gt 0)) {
                     foreach ($ext in $vmExtensions) {
-                        if ($uninstallExtensionNameList -icontains $ext.Name) {
+                        if ($uninstallExtensionNameList -icontains $ext) {
                             $isAnyExtensionProcessed = $true
-                            # Write-Host "Removing Extension $($ext.Name) for VM: $vmName, from excludeVMNameList: $excludeVMNameList" -ForegroundColor Cyan
+                            # Write-Host "Removing Extension $($ext) for VM: $vmName, from excludeVMNameList: $excludeVMNameList" -ForegroundColor Cyan
                             try {
-                                Remove-AzVMExtension -ResourceGroupName $resourceGroupName -Name $ext.Name -VMName $vmName -Force -ErrorAction SilentlyContinue | Out-Null
-                                Write-Host "Successfully removed Extension $($ext.Name) for VM: $vmName" -ForegroundColor Yellow
+                                # Write-Host "$resourceGroupName, $vmName, $ext"
+                                az vm extension delete --no-wait 0 --resource-group $resourceGroupName --vm-name $vmName --name $ext 
+                                az vm extension wait --deleted --timeout 600 --interval 10 --resource-group $resourceGroupName --vm-name $vmName --name $ext
+                                Write-Host "Successfully removed Extension $($ext) for VM: $vmName" -ForegroundColor Yellow
                             } catch {
-                                Write-Host "Failed to remove Extension $($ext.Name) for VM: $vmName" -ForegroundColor Red
+                                Write-Host "Failed to remove Extension $($ext) for VM: $vmName" -ForegroundColor Red
                                 Write-Host $_
                             }
                         }
